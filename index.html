@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cosmic Certificate Verifier</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(ellipse at center, #0f2027, #203a43, #2c5364);
+      height: 100vh;
+      overflow: hidden;
+    }
+    #bg-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    #solar-system {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
+    .orbit {
+      position: absolute;
+      border: 1px dashed rgba(255,255,255,0.15);
+      border-radius: 50%;
+      transform-origin: center center;
+    }
+    .planet {
+      position: absolute;
+      background-size: cover;
+      border-radius: 50%;
+    }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    .container {
+      position: relative;
+      z-index: 3;
+      width: 420px;
+      max-width: 90%;
+      margin: 30px auto 0;
+    }
+
+    #logo {
+      max-width: 35px;
+      max-height: 35px;
+      margin-right: 20px;
+    }
+    .verifier-box, .certificate-card {
+      background: rgba(20,20,35,0.9);
+      border-radius: 20px;
+      padding: 40px 30px;
+      color: white;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 30px rgba(255,255,255,0.05);
+      animation: fadeIn 0.5s ease;
+    }
+
+    .verifier-box {
+      margin-top: 55%;
+    }
+    .certificate-card {
+      display: none;
+      margin-top: 23%;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    .verifier-box h1, .certificate-card h2 {
+      text-align: center;
+      font-size: 26px;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: 600;
+      color: #ccc;
+      margin-bottom: 8px;
+      display: block;
+    }
+    input {
+      width: 90%;
+      margin-bottom: 20px;
+      padding: 14px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: white;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3e61ff, #ab47bc);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(100,100,255,0.3);
+      transition: transform 0.2s;
+    }
+    button:hover { transform: translateY(-1px); }
+
+    #lightning-spinner {
+      display: none;
+      margin: 20px auto;
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle, #fff, rgba(255,255,255,0) 70%);
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+    }
+    #lightning-spinner::before, #lightning-spinner::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: inherit;
+      border-radius: inherit;
+      opacity: 0.6;
+      transform: scale(0);
+      animation: bolt 1s infinite;
+    }
+    #lightning-spinner::after { animation-delay: 0.5s; }
+    @keyframes bolt {
+      0%   { transform: scale(0); opacity: 0.6; }
+      50%  { transform: scale(1.3); opacity: 0; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    #lightning-spinner.active { display: block; }
+
+    .certificate-photo {
+      width: 130px; height: 130px;
+      border-radius: 8px;
+      margin: 0 auto 20px;
+      display: block;
+    }
+    .certificate-info p {
+      margin: 6px 0;
+      color: #ddd;
+    }
+    .assignments span {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin: 4px 4px 0 0;
+      color: white;
+      font-size: 14px;
+    }
+    .certificate-card a {
+      display: inline-block;
+      margin-top: 12px;
+      color: #56ccf2;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .certificate-card a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="solar-system"></div>
+
+  <div class="container">
+    <div class="verifier-box" id="verifyBox">
+      <h1><img src="logo.png" id="logo"> Vault of Codes</h1>
+      <label for="certId">Certificate ID or email</label>
+      <input type="text" id="certId" placeholder="e.g. ABC123 or example@gmail.com"/>
+      <button onclick="startVerify()">Verify</button>
+      <div id="lightning-spinner"></div>
+    </div>
+
+    <div class="certificate-card" id="certCard">
+      <h2>🎓 Certificate Details</h2>
+      <img src="" alt="Photo" class="certificate-photo" id="photo">
+      <div class="certificate-info">
+        <p><strong>Name:</strong> <span id="name"></span></p>
+        <p><strong>Email:</strong> <span id="email"></span></p>
+        <p><strong>Mobile:</strong> <span id="mobile"></span></p>
+        <p><strong>Domain:</strong> <span id="domain"></span></p>
+        <p><strong>College:</strong> <span id="college"></span></p>
+        <p><strong>Start Date:</strong> <span id="start"></span></p>
+        <p><strong>Duration:</strong> <span id="duration"></span></p>
+        <div class="assignments"><strong>Assignments:</strong> <span id="assigns"></span></div>
+        <a href="#" target="_blank" id="certLink">View Certificate</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    const stars = Array(500).fill().map(() => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2,
+      dx: (Math.random() - 0.5) * 0.5,
+      dy: (Math.random() - 0.5) * 0.5
+    }));
+
+    function animateStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'white';
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+        s.x += s.dx;
+        s.y += s.dy;
+        if (s.x < 0 || s.x > canvas.width) s.dx *= -1;
+        if (s.y < 0 || s.y > canvas.height) s.dy *= -1;
+      });
+      requestAnimationFrame(animateStars);
+    }
+    animateStars();
+
+    const planets = [
+      { size: 42, radius: 140, img: "./mercury.png", period: 6 },
+      { size: 46, radius: 180, img: "./venus.png", period: 8 },
+      { size: 50, radius: 240, img: "./earth.png", period: 10 },
+      { size: 48, radius: 300, img: "./mars.png", period: 12 },
+      { size: 58, radius: 360, img: "./Jupiter.png", period: 14 },
+      { size: 54, radius: 420, img: "./Saturn.png", period: 16 },
+      { size: 52, radius: 480, img: "./Uranus.png", period: 18 },
+      { size: 52, radius: 540, img: "./Neptune.png", period: 20 }
+    ];
+
+    const solar = document.getElementById("solar-system");
+    planets.forEach(p => {
+      const orbit = document.createElement("div");
+      orbit.className = "orbit";
+      orbit.style.width = orbit.style.height = `${p.radius * 2}px`;
+      orbit.style.margin = `-${p.radius}px 0 0 -${p.radius}px`;
+      orbit.style.animation = `rotate ${p.period}s linear infinite`;
+
+      const planet = document.createElement("div");
+      planet.className = "planet";
+      planet.style.width = planet.style.height = `${p.size}px`;
+      planet.style.top = `-${p.size / 2}px`;
+      planet.style.left = `${p.radius - p.size / 2}px`;
+      planet.style.backgroundImage = `url(${p.img})`;
+
+      orbit.appendChild(planet);
+      solar.appendChild(orbit);
+    });
+
+    function startVerify() {
+      const spinner = document.getElementById("lightning-spinner");
+      spinner.classList.add("active");
+      setTimeout(showCert, 1500);
+    }
+
+    function showCert() {
+      const data = {
+        name: 'Spidey',
+        email: 'spidey@web.com',
+        mobile: '9876543210',
+        domain: 'Web Development',
+        college: 'Marvel University',
+        start: '01 June 2024',
+        duration: '1 Month',
+        photo: 'https://cdn.pixabay.com/photo/2023/05/16/04/39/ai-generated-7996493_1280.jpg',
+        assignments: [true, false, true, true],
+        certificate: '#'
+      };
+
+      document.getElementById("photo").src = data.photo;
+      ['name', 'email', 'mobile', 'domain', 'college', 'start', 'duration'].forEach(k => {
+        document.getElementById(k).textContent = data[k];
+      });
+      document.getElementById("assigns").innerHTML =
+        data.assignments.map((v,i) => `A${i+1}: ${v ? '✅': '❌'}`).join(' ');
+      document.getElementById("certLink").href = data.certificate;
+
+      document.getElementById("lightning-spinner").classList.remove("active");
+      document.getElementById("verifyBox").style.display = "none";
+      document.getElementById("certCard").style.display = "block";
+    }
+  </script>
+</body>
+</html>
